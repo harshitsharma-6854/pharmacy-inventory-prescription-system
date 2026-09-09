@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Directory{% endblock %}
+{% block breadcrumb %}Patients{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Patient Registry</h2>
+    <p class="text-muted small mb-0">Manage clinical profiles, multiple contact points, and patient histories.</p>
+  </div>
+  <button class="btn-saas btn-saas-primary" data-bs-toggle="modal" data-bs-target="#addPatientModal">
+    <i class="fas fa-user-plus"></i> Add New Patient
+  </button>
+</div>
+
+<!-- Search & Filters -->
+<div class="saas-card mb-4">
+  <div class="saas-card-body py-3">
+    <form method="GET" action="{{ url_for('patients_view') }}" class="row g-2 align-items-center">
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+          <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search by name or city..." value="{{ request.args.get('search', '') }}">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <select name="city" class="form-select">
+          <option value="">All Cities</option>
+          {% for c in cities %}
+          <option value="{{ c.City }}" {% if request.args.get('city') == c.City %}selected{% endif %}>{{ c.City }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="gender" class="form-select">
+          <option value="">All Genders</option>
+          <option value="M" {% if request.args.get('gender') == 'M' %}selected{% endif %}>Male (M)</option>
+          <option value="F" {% if request.args.get('gender') == 'F' %}selected{% endif %}>Female (F)</option>
+          <option value="O" {% if request.args.get('gender') == 'O' %}selected{% endif %}>Other (O)</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn-saas btn-saas-teal w-100 justify-content-center">Filter</button>
+        <a href="{{ url_for('patients_view') }}" class="btn-saas btn-saas-outline"><i class="fas fa-redo"></i></a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Patients Table -->
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-card-title">
+      <i class="fas fa-users text-teal"></i> Registered Patients ({{ patients | length }})
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Patient Name</th>
+          <th>Sex / Age</th>
+          <th>City & Address</th>
+          <th>Contact Number(s)</th>
+          <th>Prescriptions</th>
+          <th>Total Billed</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in patients %}
+        <tr>
+          <td><span class="badge bg-light text-dark fw-bold">#{{ p.Patient_ID }}</span></td>
+          <td class="fw-semibold text-primary">
+            {{ p.First_Name }} {{ p.Last_Name }}
+          </td>
+          <td>
+            <span class="badge {% if p.Sex == 'M' %}bg-primary-subtle text-primary{% else %}bg-danger-subtle text-danger{% endif %}">
+              {{ p.Sex }}
+            </span>
+            <span class="text-muted small ms-1">{{ p.DOB }}</span>
+          </td>
+          <td>
+            <div class="fw-medium">{{ p.City }}, {{ p.State }}</div>
+            <div class="text-muted small text-truncate" style="max-width: 200px;">{{ p.Street }}</div>
+          </td>
+          <td>
+            <span class="small text-dark"><i class="fas fa-phone-alt text-muted me-1"></i>{{ p.Contacts or 'N/A' }}</span>
+          </td>
+          <td>
+            <span class="badge-status info">
+              <i class="fas fa-file-prescription"></i> {{ p.Prescription_Count }} Orders
+            </span>
+          </td>
+          <td class="fw-bold text-dark">
+            {{ p.Total_Spent | currency }}
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="viewPatientModal({{ p.Patient_ID }})" title="View Details">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deletePatient({{ p.Patient_ID }}, '{{ p.First_Name }} {{ p.Last_Name }}')" title="Delete">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-5 text-muted">
+            <i class="fas fa-user-slash fa-2x mb-3 text-secondary opacity-50 d-block"></i>
+            No patients match the given search criteria.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Add New Patient (Invokes Stored Procedure add_patient) -->
+<div class="modal fade" id="addPatientModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i>Register New Patient</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="addPatientForm" onsubmit="submitAddPatient(event)">
+        <div class="modal-body p-4">
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fas fa-database me-1"></i> Data will be validated and inserted via MySQL stored procedure <code>add_patient()</code>.
+          </div>
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Patient ID (Auto/Manual)</label>
+              <input type="number" name="patient_id" class="form-control form-control-saas" placeholder="e.g. 415">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">First Name *</label>
+              <input type="text" name="first_name" class="form-control form-control-saas" placeholder="e.g. Aryan" required>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label small fw-bold">Last Name *</label>
+              <input type="text" name="last_name" class="form-control form-control-saas" placeholder="e.g. Kapoor" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Date of Birth *</label>
+              <input type="date" name="dob" class="form-control form-control-saas" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Sex / Gender *</label>
+              <select name="sex" class="form-select form-control-saas" required>
+                <option value="M">Male (M)</option>
+                <option value="F">Female (F)</option>
+                <option value="O">Other (O)</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Primary Contact No *</label>
+              <input type="text" name="contact_no" class="form-control form-control-saas" placeholder="+91 98200 12345" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Street Address</label>
+              <input type="text" name="street" class="form-control form-control-saas" placeholder="Flat / Building / Road" value="Medical Enclave">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">City</label>
+              <input type="text" name="city" class="form-control form-control-saas" value="Mumbai">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">State</label>
+              <input type="text" name="state" class="form-control form-control-saas" value="Maharashtra">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn-saas btn-saas-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-saas btn-saas-teal"><i class="fas fa-save me-1"></i> Register Patient</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: View Patient Details (Full Medical & Billing History) -->
+<div class="modal fade" id="patientDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold" id="detailPatientName">Patient Profile</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="patientDetailContent">
+        <div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn-saas btn-saas-outline" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function submitAddPatient(event) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch('/api/patients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    if (result.success) {
+      showToast(`✓ ${result.message || 'Patient registered successfully!'}`, 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showToast(result.message || 'Error registering patient.', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to connect to database procedure.', 'error');
+  }
+}
+
+async function viewPatientModal(patientId) {
+  const modalEl = document.getElementById('patientDetailModal');
+  const modal = new bootstrap.Modal(modalEl);
+  const content = document.getElementById('patientDetailContent');
+  modal.show();
+
+  try {
+    const res = await fetch(`/api/patients/${patientId}`);
+    const json = await res.json();
+    if (!json.success) {
+      content.innerHTML = `<div class="alert alert-danger">${json.message}</div>`;
+      return;
+    }
+    const p = json.data;
+    document.getElementById('detailPatientName').textContent = `${p.First_Name} ${p.Last_Name} (ID: #${p.Patient_ID})`;
+
+    content.innerHTML = `
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded">
+            <span class="text-muted small">Date of Birth:</span>
+            <div class="fw-bold">${p.DOB} (Sex: ${p.Sex})</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded">
+            <span class="text-muted small">Location:</span>
+            <div class="fw-bold">${p.City}, ${p.State}</div>
+            <div class="text-muted small">${p.Street}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded">
+            <span class="text-muted small">Contact Phone(s):</span>
+            <div class="fw-bold">${p.contacts.join(', ') || 'N/A'}</div>
+          </div>
+        </div>
+      </div>
+
+      <h6 class="fw-bold text-primary border-bottom pb-2 mb-3"><i class="fas fa-file-prescription me-2"></i>Prescription History</h6>
+      ${p.prescriptions.length > 0 ? `
+        <div class="table-responsive mb-4">
+          <table class="table table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Doctor</th>
+                <th>Hospital</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${p.prescriptions.map(pr => `
+                <tr>
+                  <td><span class="badge bg-light text-dark">#${pr.Prescription_ID}</span></td>
+                  <td>${pr.Date}</td>
+                  <td class="fw-semibold">Dr. ${pr.Doctor_First} ${pr.Doctor_Last} <small class="text-muted">(${pr.Qualification})</small></td>
+                  <td>${pr.Hospital_Name}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : '<p class="text-muted small mb-4">No recorded prescriptions for this patient.</p>'}
+
+      <h6 class="fw-bold text-success border-bottom pb-2 mb-3 d-flex justify-content-between">
+        <span><i class="fas fa-file-invoice-dollar me-2"></i>Invoiced Bills</span>
+        <span>Total Lifetime: ${formatINR(p.total_spent)}</span>
+      </h6>
+      ${p.bills.length > 0 ? `
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Bill ID</th>
+                <th>Dispensing Pharmacy</th>
+                <th class="text-end">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${p.bills.map(b => `
+                <tr>
+                  <td>#${b.Bill_ID}</td>
+                  <td>${b.Pharmacy_Name} (${b.Pharmacy_City})</td>
+                  <td class="text-end fw-bold text-success">${formatINR(b.Amount)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : '<p class="text-muted small">No billing transactions recorded.</p>'}
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-danger">Network failure loading patient profile.</div>`;
+  }
+}
+
+async function deletePatient(patientId, name) {
+  if (!confirm(`Are you sure you want to remove patient '${name}' (ID: #${patientId})?`)) return;
+  try {
+    const res = await fetch(`/api/patients/${patientId}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      showToast(`✓ ${json.message}`, 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showToast(`✕ ${json.message || 'Cannot delete patient.'}`, 'error');
+    }
+  } catch (err) {
+    showToast('Failed to execute delete request.', 'error');
+  }
+}
+</script>
+{% endblock %}

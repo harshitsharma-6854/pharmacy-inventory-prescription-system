@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers & Manufacturers{% endblock %}
+{% block breadcrumb %}Suppliers{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Pharmaceutical Supply Chain & Distribution</h2>
+    <p class="text-muted small mb-0">Authorized logistics distributors, manufacturer representations, and wholesale GST registrations.</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  {% for s in suppliers %}
+  <div class="col-lg-6">
+    <div class="saas-card h-100">
+      <div class="saas-card-header bg-light">
+        <div class="saas-card-title">
+          <i class="fas fa-truck-moving text-teal"></i> {{ s.Name }}
+        </div>
+        <span class="badge bg-primary">#SUP-{{ s.Supplier_ID }}</span>
+      </div>
+      <div class="saas-card-body">
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <span class="text-muted small">Contact Phone:</span>
+            <div class="fw-semibold text-dark"><i class="fas fa-phone-alt text-muted me-1"></i>{{ s.Contact }}</div>
+          </div>
+          <div class="col-6">
+            <span class="text-muted small">Hub City:</span>
+            <div class="fw-semibold text-dark">{{ s.City }}, {{ s.State }}</div>
+          </div>
+          <div class="col-12">
+            <span class="text-muted small">Distribution Address:</span>
+            <div class="text-muted small">{{ s.Street }}</div>
+          </div>
+        </div>
+
+        <!-- Distributed Manufacturers (M:N) -->
+        <div class="border-top pt-2 mb-3">
+          <span class="text-muted small fw-bold text-uppercase">Authorized Manufacturers (M:N):</span>
+          <div class="d-flex flex-wrap gap-1 mt-1">
+            {% for m in s.manufacturers %}
+            <span class="badge bg-light text-primary border"><i class="fas fa-industry me-1"></i>{{ m.Brand_Name }}</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Wholesale GST Links (M:N) -->
+        <div class="border-top pt-2 mb-3">
+          <span class="text-muted small fw-bold text-uppercase">Wholesale GST Affiliations:</span>
+          <div class="d-flex flex-wrap gap-1 mt-1">
+            {% for w in s.wholesale %}
+            <span class="badge bg-light text-dark border"><code>{{ w.GST_No }}</code> ({{ w.City }})</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Performance -->
+        <div class="border-top pt-3 bg-light p-2 rounded d-flex justify-content-between">
+          <div>
+            <span class="text-muted small">Total Orders:</span>
+            <div class="fw-bold">{{ s.stats.total_orders or 0 }} Orders</div>
+          </div>
+          <div>
+            <span class="text-muted small">Units Supplied:</span>
+            <div class="fw-bold text-teal">{{ s.stats.total_qty or 0 }} Units</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

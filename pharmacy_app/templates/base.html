@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Dashboard{% endblock %} - PHARMA Care & Inventory</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5.3.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- FontAwesome 6.5.1 CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  
+  <!-- Custom Modern Healthcare SaaS Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+  <!-- Chart.js 4.4 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<div class="app-wrapper">
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="app-sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <i class="fas fa-prescription-bottle-alt"></i>
+      </div>
+      <div>
+        <div class="brand-title">PHARMA</div>
+        <div class="brand-subtitle">Inventory & Care</div>
+      </div>
+    </div>
+
+    <div class="sidebar-scrollable">
+      <!-- Dashboard -->
+      <a href="{{ url_for('dashboard_view') }}" class="nav-item-link {% if active_page == 'dashboard' %}active{% endif %}">
+        <i class="fas fa-th-large"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <!-- Management -->
+      <div class="nav-section-title">Management</div>
+      <a href="{{ url_for('patients_view') }}" class="nav-item-link {% if active_page == 'patients' %}active{% endif %}">
+        <i class="fas fa-user-injured"></i>
+        <span>Patients</span>
+      </a>
+      <a href="{{ url_for('doctors_view') }}" class="nav-item-link {% if active_page == 'doctors' %}active{% endif %}">
+        <i class="fas fa-user-md"></i>
+        <span>Doctors</span>
+      </a>
+      <a href="{{ url_for('pharmacists_view') }}" class="nav-item-link {% if active_page == 'pharmacists' %}active{% endif %}">
+        <i class="fas fa-user-nurse"></i>
+        <span>Pharmacists</span>
+      </a>
+      <a href="{{ url_for('pharmacies_view') }}" class="nav-item-link {% if active_page == 'pharmacies' %}active{% endif %}">
+        <i class="fas fa-clinic-medical"></i>
+        <span>Pharmacies</span>
+      </a>
+      <a href="{{ url_for('hospitals_view') }}" class="nav-item-link {% if active_page == 'hospitals' %}active{% endif %}">
+        <i class="fas fa-hospital"></i>
+        <span>Hospitals</span>
+      </a>
+
+      <!-- Inventory -->
+      <div class="nav-section-title">Inventory & Supply</div>
+      <a href="{{ url_for('medicines_view') }}" class="nav-item-link {% if active_page == 'medicines' %}active{% endif %}">
+        <i class="fas fa-pills"></i>
+        <span>Medicines</span>
+      </a>
+      <a href="{{ url_for('stock_view') }}" class="nav-item-link {% if active_page == 'stock' %}active{% endif %}">
+        <i class="fas fa-boxes"></i>
+        <span>Stock & Audit Logs</span>
+      </a>
+      <a href="{{ url_for('suppliers_view') }}" class="nav-item-link {% if active_page == 'suppliers' %}active{% endif %}">
+        <i class="fas fa-truck-loading"></i>
+        <span>Suppliers & Mfg</span>
+      </a>
+      <a href="{{ url_for('orders_view') }}" class="nav-item-link {% if active_page == 'orders' %}active{% endif %}">
+        <i class="fas fa-shipping-fast"></i>
+        <span>Procurement Orders</span>
+      </a>
+
+      <!-- Clinical -->
+      <div class="nav-section-title">Clinical Care</div>
+      <a href="{{ url_for('prescriptions_view') }}" class="nav-item-link {% if active_page == 'prescriptions' %}active{% endif %}">
+        <i class="fas fa-file-prescription"></i>
+        <span>Prescriptions</span>
+      </a>
+      <a href="{{ url_for('prescription_items_view') }}" class="nav-item-link {% if active_page == 'prescription_items' %}active{% endif %}">
+        <i class="fas fa-list-ol"></i>
+        <span>Prescription Items</span>
+      </a>
+
+      <!-- Finance -->
+      <div class="nav-section-title">Finance & Billing</div>
+      <a href="{{ url_for('bills_view') }}" class="nav-item-link {% if active_page == 'bills' %}active{% endif %}">
+        <i class="fas fa-file-invoice-dollar"></i>
+        <span>Bills & Invoices</span>
+      </a>
+
+      <!-- Analytics -->
+      <div class="nav-section-title">Analytics</div>
+      <a href="{{ url_for('reports_view') }}" class="nav-item-link {% if active_page == 'reports' %}active{% endif %}">
+        <i class="fas fa-chart-line"></i>
+        <span>Reports & Insights</span>
+      </a>
+
+      <!-- Database Viva Special -->
+      <div class="nav-section-title">Database DA2 Viva</div>
+      <a href="{{ url_for('db_operations_view') }}" class="nav-item-link {% if active_page == 'db_operations' %}active{% endif %}" style="background: rgba(13, 148, 136, 0.15); border: 1px dashed var(--secondary);">
+        <i class="fas fa-terminal text-info"></i>
+        <span class="text-white fw-bold">DB Operations</span>
+      </a>
+
+      <!-- System -->
+      <div class="nav-section-title">System</div>
+      <a href="{{ url_for('settings_view') }}" class="nav-item-link {% if active_page == 'settings' %}active{% endif %}">
+        <i class="fas fa-cog"></i>
+        <span>Settings & Health</span>
+      </a>
+    </div>
+
+    <!-- Sidebar Footer Profile -->
+    <div class="sidebar-footer">
+      <div class="user-profile-badge">
+        <div class="user-avatar">AD</div>
+        <div class="user-info">
+          <div class="user-name">Administrator</div>
+          <div class="user-role">DA2 College Project Demo</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CANVAS -->
+  <main class="app-main">
+    <!-- Top Sticky Bar -->
+    <header class="app-topbar">
+      <div class="topbar-left">
+        <div class="page-breadcrumb">
+          <span>{{ app_name }}</span> / {% block breadcrumb %}Overview{% endblock %}
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Live Database Engine Indicator Badge -->
+        {% if db_status.is_mysql %}
+          <div class="db-status-pill mysql" title="Connected to native MySQL 8.x">
+            <span class="pulse-dot"></span>
+            <span>MySQL 8.x Active</span>
+          </div>
+        {% else %}
+          <div class="db-status-pill demo" title="Running on Zero-Config Fallback Demo Database">
+            <span class="pulse-dot"></span>
+            <span>Demo Engine Active (SQLite)</span>
+          </div>
+        {% endif %}
+
+        <a href="{{ url_for('db_operations_view') }}" class="btn-saas btn-saas-teal btn-saas-sm">
+          <i class="fas fa-play-circle"></i>
+          <span>Viva Demonstration</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Page Body -->
+    <div class="content-container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<!-- Global Notification Toast Container -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Bootstrap 5.3 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Global App JS -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

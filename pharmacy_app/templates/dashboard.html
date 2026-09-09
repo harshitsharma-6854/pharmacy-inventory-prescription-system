@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Overview{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Welcome Header Banner -->
+<div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+  <div>
+    <h1 class="dashboard-title">Good morning, Administrator</h1>
+    <p class="dashboard-subtitle">Here's what's happening with your pharmacy network today.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('prescriptions_view') }}" class="btn-saas btn-saas-primary">
+      <i class="fas fa-plus"></i> New Prescription
+    </a>
+    <a href="{{ url_for('medicines_view') }}" class="btn-saas btn-saas-outline">
+      <i class="fas fa-pills"></i> Manage Medicines
+    </a>
+    <a href="{{ url_for('db_operations_view') }}" class="btn-saas btn-saas-teal">
+      <i class="fas fa-terminal"></i> Viva Console
+    </a>
+  </div>
+</div>
+
+<!-- 8 KPI Metrics Cards Grid -->
+<div class="stat-cards-grid">
+  <!-- Card 1: Total Patients -->
+  <div class="stat-card blue">
+    <div class="stat-content">
+      <div class="stat-label">Total Patients</div>
+      <div class="stat-value">{{ metrics.total_patients }}</div>
+      <div class="stat-subtext text-success"><i class="fas fa-arrow-up"></i> Registered in Network</div>
+    </div>
+    <div class="stat-icon-wrapper">
+      <i class="fas fa-users"></i>
+    </div>
+  </div>
+
+  <!-- Card 2: Total Medicines -->
+  <div class="stat-card teal">
+    <div class="stat-content">
+      <div class="stat-label">Total Medicines</div>
+      <div class="stat-value">{{ metrics.total_medicines }}</div>
+      <div class="stat-subtext">Active Formulations</div>
+    </div>
+    <div class="stat-icon-wrapper">
+      <i class="fas fa-capsules"></i>
+    </div>
+  </div>
+
+  <!-- Card 3: Active Prescriptions -->
+  <div class="stat-card indigo">
+    <div class="stat-content">
+      <div class="stat-label">Prescriptions</div>
+      <div class="stat-value">{{ metrics.total_prescriptions }}</div>
+      <div class="stat-subtext text-info">Clinical Orders</div>
+    </div>
+    <div class="stat-icon-wrapper">
+      <i class="fas fa-file-medical"></i>
+    </div>
+  </div>
+
+  <!-- Card 4: Total Pharmacies -->
+  <div class="stat-card green">
+    <div class="stat-content">
+      <div class="stat-label">Pharmacies</div>
+      <div class="stat-value">{{ metrics.total_pharmacies }}</div>
+      <div class="stat-subtext">Operating Branches</div>
+    </div>
+    <div class="stat-icon-wrapper">
+      <i class="fas fa-clinic-medical"></i>
+    </div>
+  </div>
+
+  <!-- Card 5: Low Stock Alert -->
+  <div class="stat-card rose">
+    <div class="stat-content">
+      <div class="stat-label">Low Stock Items</div>
+      <div class="stat-value text-danger">{{ metrics.low_stock_count }}</div>
+      <div class="stat-subtext text-danger"><i class="fas fa-exclamation-triangle"></i> Action Required</div>
+    </div>
+    <div class="stat-icon-wrapper">
+      <i class="fas fa-exclamation-circle"></i>
+    </div>
+  </div>
+
+  <!-- Card 6: Pending Orders -->
+  <div class="stat-card amber">
+    <div class="stat-content">
+      <div class="stat-label">Pending Orders</div>
+      <div class="stat-value text-warning">{{ metrics.pending_orders }}</div>
+      <div class="stat-subtext">Awaiting Delivery</div>
+    </div>
+    <div class="stat-icon-wrapper">
+      <i class="fas fa-truck-loading"></i>
+    </div>
+  </div>
+
+  <!-- Card 7: Recent Revenue -->
+  <div class="stat-card teal">
+    <div class="stat-content">
+      <div class="stat-label">Recent Invoiced</div>
+      <div class="stat-value">{{ metrics.today_revenue | currency }}</div>
+      <div class="stat-subtext text-success">Latest Cycles</div>
+    </div>
+    <div class="stat-icon-wrapper">
+      <i class="fas fa-wallet"></i>
+    </div>
+  </div>
+
+  <!-- Card 8: Total Revenue -->
+  <div class="stat-card blue">
+    <div class="stat-content">
+      <div class="stat-label">Total Gross Revenue</div>
+      <div class="stat-value">{{ metrics.total_revenue | currency }}</div>
+      <div class="stat-subtext text-primary">Lifetime Billed</div>
+    </div>
+    <div class="stat-icon-wrapper">
+      <i class="fas fa-chart-line"></i>
+    </div>
+  </div>
+</div>
+
+<!-- 6 Real-time Analytical Charts Grid -->
+<div class="chart-grid">
+  <!-- Chart 1: Revenue Overview -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <h3 class="chart-title">
+        <i class="fas fa-hand-holding-usd text-teal"></i> Gross Revenue by Pharmacy Branch
+      </h3>
+      <span class="chart-badge">Live Financials</span>
+    </div>
+    <div style="position: relative; height: 260px;">
+      <canvas id="chartRevenue"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 2: Prescription Trends -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <h3 class="chart-title">
+        <i class="fas fa-heartbeat text-primary"></i> Prescription Issuance Timeline
+      </h3>
+      <span class="chart-badge">Temporal Frequency</span>
+    </div>
+    <div style="position: relative; height: 260px;">
+      <canvas id="chartPrescriptions"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 3: Inventory Distribution -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <h3 class="chart-title">
+        <i class="fas fa-boxes text-info"></i> Top Therapeutics Inventory Share
+      </h3>
+      <span class="chart-badge">Units on Hand</span>
+    </div>
+    <div style="position: relative; height: 260px;">
+      <canvas id="chartInventory"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 4: Order Status Breakdown -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <h3 class="chart-title">
+        <i class="fas fa-shipping-fast text-warning"></i> Procurement Order Statuses
+      </h3>
+      <span class="chart-badge">Fulfillment Pipeline</span>
+    </div>
+    <div style="position: relative; height: 260px;">
+      <canvas id="chartOrders"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 5: Low Stock Medicines -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <h3 class="chart-title">
+        <i class="fas fa-exclamation-triangle text-danger"></i> Low Stock vs Reorder Level
+      </h3>
+      <span class="chart-badge text-danger">Replenishment Alert</span>
+    </div>
+    <div style="position: relative; height: 260px;">
+      <canvas id="chartLowStock"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 6: Top 5 Most Prescribed Medicines -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <h3 class="chart-title">
+        <i class="fas fa-star text-amber"></i> Top 5 Most Prescribed Therapeutics
+      </h3>
+      <span class="chart-badge">High Demand</span>
+    </div>
+    <div style="position: relative; height: 260px;">
+      <canvas id="chartTopMeds"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

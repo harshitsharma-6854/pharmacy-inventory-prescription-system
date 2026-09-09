@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Prescription Items (M:N Associative Entity){% endblock %}
+{% block breadcrumb %}Prescription Items{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Prescription Items Directory</h2>
+    <p class="text-muted small mb-0">Direct relational inspection of the M:N associative entity linking Prescriptions and Medicines.</p>
+  </div>
+  <a href="{{ url_for('prescriptions_view') }}" class="btn-saas btn-saas-outline">
+    <i class="fas fa-arrow-left"></i> Back to Prescriptions
+  </a>
+</div>
+
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-card-title">
+      <i class="fas fa-list-ol text-teal"></i> All Prescription Items ({{ items | length }})
+    </div>
+    <div class="small text-muted">
+      <i class="fas fa-link me-1"></i> Associative Table: <code>PRESCRIPTION_ITEM</code>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Item ID</th>
+          <th>Prescription ID</th>
+          <th>Patient Name</th>
+          <th>Medicine Formulation</th>
+          <th>Dosage</th>
+          <th>Frequency</th>
+          <th>Duration</th>
+          <th class="text-end">Unit Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in items %}
+        <tr>
+          <td><span class="badge bg-light text-dark fw-bold">#{{ i.Item_ID }}</span></td>
+          <td>
+            <a href="{{ url_for('prescriptions_view') }}" class="fw-semibold">
+              <i class="fas fa-file-prescription me-1"></i>#{{ i.Prescription_ID }}
+            </a>
+          </td>
+          <td class="fw-medium text-dark">{{ i.Patient_First }} {{ i.Patient_Last }}</td>
+          <td class="fw-bold text-primary">{{ i.Medicine_Name }}</td>
+          <td><span class="badge bg-light text-dark">{{ i.Dosage }}</span></td>
+          <td>{{ i.Frequency }}</td>
+          <td><i class="far fa-clock text-muted me-1"></i>{{ i.Duration }}</td>
+          <td class="text-end fw-bold text-dark">{{ i.Price | currency }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

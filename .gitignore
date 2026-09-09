@@ -1,0 +1,6 @@
+.env
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+pharmacy_app/pharmacy_demo.db

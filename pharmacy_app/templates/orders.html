@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Procurement Orders{% endblock %}
+{% block breadcrumb %}Orders{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Procurement Purchase Orders</h2>
+    <p class="text-muted small mb-0">Track pharmaceutical wholesale supply pipelines and manage delivery lifecycles.</p>
+  </div>
+  <button class="btn-saas btn-saas-primary" data-bs-toggle="modal" data-bs-target="#placeOrderModal">
+    <i class="fas fa-truck-loading"></i> Place Purchase Order
+  </button>
+</div>
+
+<!-- Filter Cards -->
+<div class="saas-card mb-4">
+  <div class="saas-card-body py-3">
+    <form method="GET" action="{{ url_for('orders_view') }}" class="row g-2 align-items-center">
+      <div class="col-md-4">
+        <input type="text" name="search" class="form-control form-control-saas" placeholder="Search supplier or pharmacy..." value="{{ request.args.get('search', '') }}">
+      </div>
+      <div class="col-md-3">
+        <select name="status" class="form-select">
+          <option value="">All Fulfillment Statuses</option>
+          <option value="Pending" {% if request.args.get('status') == 'Pending' %}selected{% endif %}>Pending</option>
+          <option value="Processing" {% if request.args.get('status') == 'Processing' %}selected{% endif %}>Processing</option>
+          <option value="Shipped" {% if request.args.get('status') == 'Shipped' %}selected{% endif %}>Shipped</option>
+          <option value="Delivered" {% if request.args.get('status') == 'Delivered' %}selected{% endif %}>Delivered</option>
+          <option value="Cancelled" {% if request.args.get('status') == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="supplier_id" class="form-select">
+          <option value="">All Suppliers</option>
+          {% for s in suppliers %}
+          <option value="{{ s.Supplier_ID }}" {% if request.args.get('supplier_id')|string == s.Supplier_ID|string %}selected{% endif %}>{{ s.Name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn-saas btn-saas-teal w-100 justify-content-center">Filter</button>
+        <a href="{{ url_for('orders_view') }}" class="btn-saas btn-saas-outline"><i class="fas fa-redo"></i></a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Orders Table -->
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-card-title">
+      <i class="fas fa-shipping-fast text-teal"></i> Procurement Orders ({{ orders | length }})
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Supplier Agency</th>
+          <th>Receiving Branch</th>
+          <th>Units Ordered</th>
+          <th>Order Date</th>
+          <th>Arrival Date</th>
+          <th>Payment</th>
+          <th>Fulfillment Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td><span class="badge bg-light text-dark fw-bold">#ORD-{{ o.Order_ID }}</span></td>
+          <td class="fw-semibold text-primary">
+            {{ o.Supplier_Name }}
+            <div class="text-muted small">{{ o.Supplier_Contact }}</div>
+          </td>
+          <td class="fw-medium text-dark">
+            {{ o.Pharmacy_Name }}
+            <div class="text-muted small">{{ o.Pharmacy_City }}</div>
+          </td>
+          <td class="fw-bold fs-6">{{ o.Quantity_Ordered }} <small class="text-muted fw-normal">units</small></td>
+          <td>{{ o.Date }}</td>
+          <td>{{ o.Arrival_Date or '<span class="text-muted">Awaiting</span>' | safe }}</td>
+          <td>
+            <span class="badge {% if o.Payment_Status == 'Paid' %}bg-success-subtle text-success{% elif o.Payment_Status == 'Partial' %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-secondary{% endif %}">
+              {{ o.Payment_Status }}
+            </span>
+          </td>
+          <td>
+            <span class="badge-status {% if o.Order_Status == 'Delivered' %}success{% elif o.Order_Status == 'Cancelled' %}danger{% elif o.Order_Status in ('Processing', 'Shipped') %}info{% else %}warning{% endif %}">
+              {{ o.Order_Status }}
+            </span>
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary" onclick="openUpdateOrderStatus({{ o.Order_ID }}, '{{ o.Order_Status }}', '{{ o.Payment_Status }}')" title="Update Status">
+              <i class="fas fa-edit"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Place Order (Procedure place_order) -->
+<div class="modal fade" id="placeOrderModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="fas fa-truck-loading me-2"></i>Place Bulk Procurement Order</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form onsubmit="submitPlaceOrder(event)">
+        <div class="modal-body p-4">
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fas fa-database me-1"></i> Invokes MySQL Stored Procedure <code>place_order()</code>; validates quantity & supplier/pharmacy existence.
+          </div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Order ID (Auto/Manual)</label>
+              <input type="number" name="order_id" class="form-control form-control-saas" placeholder="e.g. 925">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Supplier Agency *</label>
+              <select name="supplier_id" class="form-select form-control-saas" required>
+                {% for s in suppliers %}
+                <option value="{{ s.Supplier_ID }}">{{ s.Name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Receiving Pharmacy *</label>
+              <select name="pharmacy_id" class="form-select form-control-saas" required>
+                {% for p in pharmacies %}
+                <option value="{{ p.Pharmacy_ID }}">{{ p.Name }} ({{ p.City }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Quantity Ordered *</label>
+              <input type="number" name="quantity_ordered" class="form-control form-control-saas" value="150" min="1" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Order Date</label>
+              <input type="date" name="date" class="form-control form-control-saas" value="2026-09-04">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Expected Arrival</label>
+              <input type="date" name="arrival_date" class="form-control form-control-saas" value="2026-09-09">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Payment Status</label>
+              <select name="payment_status" class="form-select form-control-saas">
+                <option value="Pending">Pending</option>
+                <option value="Paid">Paid</option>
+                <option value="Partial">Partial</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Order Status</label>
+              <select name="order_status" class="form-select form-control-saas">
+                <option value="Pending">Pending</option>
+                <option value="Processing">Processing</option>
+                <option value="Shipped">Shipped</option>
+                <option value="Delivered">Delivered</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn-saas btn-saas-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-saas btn-saas-teal"><i class="fas fa-check-circle me-1"></i> Place Order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Update Order Status -->
+<div class="modal fade" id="updateOrderStatusModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold">Update Order #<span id="updateModalOrderId"></span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form onsubmit="submitUpdateOrderStatus(event)">
+        <input type="hidden" id="updateOrderIdHidden">
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Fulfillment Status</label>
+            <select id="updateOrderStatusSelect" class="form-select form-control-saas" required>
+              <option value="Pending">Pending</option>
+              <option value="Processing">Processing</option>
+              <option value="Shipped">Shipped</option>
+              <option value="Delivered">Delivered</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Payment Status</label>
+            <select id="updatePaymentStatusSelect" class="form-select form-control-saas" required>
+              <option value="Pending">Pending</option>
+              <option value="Paid">Paid</option>
+              <option value="Partial">Partial</option>
+              <option value="Refunded">Refunded</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn-saas btn-saas-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-saas btn-saas-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function submitPlaceOrder(event) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      showToast(`✓ ${json.message || 'Order placed successfully!'}`, 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showToast(json.message || 'Order failed.', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to invoke procedure.', 'error');
+  }
+}
+
+function openUpdateOrderStatus(orderId, currentStatus, currentPay) {
+  document.getElementById('updateModalOrderId').textContent = orderId;
+  document.getElementById('updateOrderIdHidden').value = orderId;
+  document.getElementById('updateOrderStatusSelect').value = currentStatus;
+  document.getElementById('updatePaymentStatusSelect').value = currentPay;
+  new bootstrap.Modal(document.getElementById('updateOrderStatusModal')).show();
+}
+
+async function submitUpdateOrderStatus(event) {
+  event.preventDefault();
+  const orderId = document.getElementById('updateOrderIdHidden').value;
+  const orderStatus = document.getElementById('updateOrderStatusSelect').value;
+  const payStatus = document.getElementById('updatePaymentStatusSelect').value;
+
+  try {
+    const res = await fetch(`/api/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_status: orderStatus, payment_status: payStatus })
+    });
+    const json = await res.json();
+    if (json.success) {
+      showToast(`✓ ${json.message}`, 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showToast(json.message || 'Update failed.', 'error');
+    }
+  } catch (err) {
+    showToast('Error updating order.', 'error');
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Clinical Prescriptions Workflow{% endblock %}
+{% block breadcrumb %}Prescriptions{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Clinical Prescription Studio</h2>
+    <p class="text-muted small mb-0">Issue authorized doctor prescriptions, specify multi-item drug regimens, and inspect clinical orders.</p>
+  </div>
+  <button class="btn-saas btn-saas-primary" onclick="document.getElementById('prescriptionBuilderSection').scrollIntoView({behavior: 'smooth'})">
+    <i class="fas fa-plus-circle"></i> New Prescription Wizard
+  </button>
+</div>
+
+<!-- PRESCRIPTION WIZARD BUILDER SECTION -->
+<div class="saas-card mb-5" id="prescriptionBuilderSection" style="border-top: 4px solid var(--secondary);">
+  <div class="saas-card-header bg-white">
+    <div class="saas-card-title">
+      <i class="fas fa-magic text-teal"></i> Clinical Prescription Builder
+    </div>
+    <span class="badge bg-light text-secondary border">Step-by-Step Clinical Workflow</span>
+  </div>
+  <div class="saas-card-body">
+    <form id="prescriptionForm" onsubmit="submitPrescriptionForm(event)">
+      <div class="row g-4">
+        <!-- Left 7 Cols: Inputs -->
+        <div class="col-lg-7">
+          <div class="row g-3">
+            <!-- Step 1: Patient -->
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-primary"><i class="fas fa-user me-1"></i> Step 1: Select Patient *</label>
+              <select id="prescPatientSelect" class="form-select form-control-saas" required>
+                <option value="">-- Choose Registered Patient --</option>
+                {% for pat in patients %}
+                <option value="{{ pat.Patient_ID }}">{{ pat.First_Name }} {{ pat.Last_Name }} (#{{ pat.Patient_ID }})</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Step 2: Doctor -->
+            <div class="col-md-6">
+              <label class="form-label small fw-bold text-primary"><i class="fas fa-user-md me-1"></i> Step 2: Prescribing Doctor *</label>
+              <select id="prescDoctorSelect" class="form-select form-control-saas" required>
+                <option value="">-- Choose Attending Doctor --</option>
+                {% for d in doctors %}
+                <option value="{{ d.Doctor_ID }}">Dr. {{ d.First_Name }} {{ d.Last_Name }} ({{ d.Qualification }})</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Step 3: Date -->
+            <div class="col-md-12">
+              <label class="form-label small fw-bold text-primary"><i class="fas fa-calendar-alt me-1"></i> Step 3: Prescription Date *</label>
+              <input type="date" id="prescDateInput" class="form-control form-control-saas" value="2026-09-04" required>
+            </div>
+          </div>
+
+          <!-- Step 4: Add Medicines Section -->
+          <div class="mt-4 pt-3 border-top">
+            <h6 class="fw-bold text-dark mb-3"><i class="fas fa-pills text-teal me-2"></i>Step 4: Prescribed Formulations (M:N Associative Items)</h6>
+            <div class="row g-2 align-items-end mb-3 p-3 bg-light rounded">
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Medicine</label>
+                <select id="itemMedicineSelect" class="form-select form-select-sm">
+                  <option value="">-- Select Drug --</option>
+                  {% for m in medicines %}
+                  <option value="{{ m.Medicine_ID }}" data-price="{{ m.Price }}">{{ m.Name }} ({{ m.Price | currency }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-bold">Dosage</label>
+                <input type="text" id="itemDosageInput" class="form-control form-control-sm" value="500mg" placeholder="e.g. 500mg">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-bold">Frequency</label>
+                <select id="itemFreqSelect" class="form-select form-select-sm">
+                  <option value="Once Daily (OD)">Once Daily (OD)</option>
+                  <option value="Twice Daily (BD)" selected>Twice Daily (BD)</option>
+                  <option value="Thrice Daily (TDS)">Thrice Daily (TDS)</option>
+                  <option value="SOS As Needed">SOS (As Needed)</option>
+                  <option value="At Bedtime (HS)">At Bedtime (HS)</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-bold">Duration</label>
+                <input type="text" id="itemDurationInput" class="form-control form-control-sm" value="5 Days">
+              </div>
+              <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-teal text-white w-100" style="background: var(--secondary);" onclick="addMedicineRow()">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Items Table in Wizard -->
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Medicine Formulation</th>
+                    <th>Dosage</th>
+                    <th>Frequency</th>
+                    <th>Duration</th>
+                    <th class="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="prescItemsTableBody">
+                  <tr>
+                    <td colspan="5" class="text-center text-muted py-3">
+                      No medicines added yet. Select formulation above and click (+).
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right 5 Cols: Live Clinical Prescription Summary -->
+        <div class="col-lg-5">
+          <div class="card border border-2 border-primary-subtle shadow-sm p-4 h-100" style="background: #fafcff;">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+              <span class="text-uppercase fw-bold text-primary small"><i class="fas fa-notes-medical me-1"></i> Live Summary</span>
+              <span class="badge bg-primary">Drafting</span>
+            </div>
+
+            <div class="mb-3">
+              <div class="text-muted small">Patient:</div>
+              <h5 class="fw-bold text-dark mb-0" id="summaryPatient">Select Patient</h5>
+            </div>
+
+            <div class="mb-3">
+              <div class="text-muted small">Doctor:</div>
+              <h6 class="fw-semibold text-primary mb-0" id="summaryDoctor">Select Doctor</h6>
+            </div>
+
+            <div class="mb-3">
+              <div class="text-muted small">Date:</div>
+              <div class="fw-medium text-dark" id="summaryDate">2026-09-04</div>
+            </div>
+
+            <div class="border-top pt-3 mb-3">
+              <div class="text-muted small mb-2 fw-bold text-uppercase">Medicines Regimen:</div>
+              <ul class="list-unstyled mb-0 small" id="summaryMedsList">
+                <li class="text-muted">No medicines added</li>
+              </ul>
+            </div>
+
+            <div class="border-top pt-3 mt-auto d-flex justify-content-between align-items-center">
+              <div>
+                <div class="text-muted small">Estimated Formulary Total:</div>
+                <h4 class="fw-bold text-success mb-0" id="summaryEstTotal">₹0.00</h4>
+              </div>
+              <button type="submit" class="btn-saas btn-saas-primary">
+                <i class="fas fa-check-circle"></i> Create Prescription
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Prescriptions History Table -->
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-card-title">
+      <i class="fas fa-file-prescription text-teal"></i> Clinical Prescriptions History ({{ prescriptions | length }})
+    </div>
+    <a href="{{ url_for('prescription_items_view') }}" class="btn-saas btn-saas-outline btn-saas-sm">
+      <i class="fas fa-list-ol"></i> View Itemized Medications
+    </a>
+  </div>
+  <div class="table-responsive">
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Prescription ID</th>
+          <th>Issued Date</th>
+          <th>Patient Name</th>
+          <th>Prescribing Doctor</th>
+          <th>Hospital Center</th>
+          <th>Items Prescribed</th>
+          <th>Est. Cost</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in prescriptions %}
+        <tr>
+          <td><span class="badge bg-light text-dark fw-bold">#{{ p.Prescription_ID }}</span></td>
+          <td><i class="far fa-calendar-alt text-muted me-1"></i>{{ p.Date }}</td>
+          <td class="fw-semibold text-primary">
+            {{ p.Patient_First }} {{ p.Patient_Last }}
+          </td>
+          <td>
+            <div class="fw-medium">Dr. {{ p.Doctor_First }} {{ p.Doctor_Last }}</div>
+            <div class="text-muted small">{{ p.Qualification }}</div>
+          </td>
+          <td>{{ p.Hospital_Name }}</td>
+          <td>
+            <span class="badge-status info">
+              <i class="fas fa-capsules"></i> {{ p.Item_Count }} Drugs
+            </span>
+          </td>
+          <td class="fw-bold text-dark">
+            {{ p.Estimated_Cost | currency }}
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="viewPrescriptionModal({{ p.Prescription_ID }})" title="View Details">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-success" onclick="openBillingForPrescription({{ p.Prescription_ID }}, {{ p.Patient_ID }})" title="Generate Bill">
+              <i class="fas fa-file-invoice-dollar"></i> Bill
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: View Prescription Detail -->
+<div class="modal fade" id="prescDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold" id="detailPrescTitle">Clinical Prescription Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="prescDetailContent">
+        <div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn-saas btn-saas-outline" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/prescription.js') }}"></script>
+<script>
+async function viewPrescriptionModal(prescId) {
+  const modalEl = document.getElementById('prescDetailModal');
+  const modal = new bootstrap.Modal(modalEl);
+  const content = document.getElementById('prescDetailContent');
+  modal.show();
+
+  try {
+    const res = await fetch(`/api/prescriptions/${prescId}`);
+    const json = await res.json();
+    if (!json.success) {
+      content.innerHTML = `<div class="alert alert-danger">${json.message}</div>`;
+      return;
+    }
+    const p = json.data;
+    document.getElementById('detailPrescTitle').textContent = `Prescription #${p.Prescription_ID} (${p.Date})`;
+
+    content.innerHTML = `
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <div class="p-3 bg-light rounded">
+            <span class="text-muted small">Patient Profile:</span>
+            <div class="fw-bold fs-6">${p.Patient_First} ${p.Patient_Last} (#${p.Patient_ID})</div>
+            <div class="text-muted small">DOB: ${p.DOB} | Sex: ${p.Sex} | ${p.Patient_City}</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 bg-light rounded">
+            <span class="text-muted small">Prescribing Doctor:</span>
+            <div class="fw-bold fs-6 text-primary">Dr. ${p.Doctor_First} ${p.Doctor_Last}</div>
+            <div class="text-muted small">${p.Qualification} | ${p.Hospital_Name}</div>
+          </div>
+        </div>
+      </div>
+
+      <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="fas fa-pills text-teal me-2"></i>Prescribed Medicines & Instructions</h6>
+      <div class="table-responsive mb-3">
+        <table class="table table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Medicine</th>
+              <th>Dosage</th>
+              <th>Frequency</th>
+              <th>Duration</th>
+              <th class="text-end">Unit Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${p.items.map(item => `
+              <tr>
+                <td class="fw-semibold">${item.Medicine_Name}</td>
+                <td><span class="badge bg-light text-dark">${item.Dosage}</span></td>
+                <td>${item.Frequency}</td>
+                <td>${item.Duration}</td>
+                <td class="text-end">${formatINR(item.Price)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-3 bg-light rounded d-flex justify-content-between align-items-center">
+        <div>
+          <span class="text-muted small">Linked Invoiced Bill:</span>
+          <div class="fw-bold">${p.linked_bill ? `#${p.linked_bill.Bill_ID} (Amount: ${formatINR(p.linked_bill.Amount)})` : 'Not Billed Yet'}</div>
+        </div>
+        <div>
+          <span class="text-muted small">Total Medications Valuation:</span>
+          <h4 class="fw-bold text-success mb-0">${formatINR(p.total_amount)}</h4>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-danger">Error retrieving prescription details.</div>`;
+  }
+}
+
+function openBillingForPrescription(prescId, patientId) {
+  window.location.href = `/bills?presc_id=${prescId}&pat_id=${patientId}`;
+}
+</script>
+{% endblock %}

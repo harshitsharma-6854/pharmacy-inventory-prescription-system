@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}DA2 Database Operations & Viva Console{% endblock %}
+{% block breadcrumb %}Database Operations (Viva Console){% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Database Operations Console (DA2 Viva Special)</h2>
+    <p class="text-muted small mb-0">Interactive academic testing console for Predefined SQL Queries, Stored Procedures, Functions, and Database Triggers.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <span class="badge bg-primary fs-6 p-2"><i class="fas fa-database me-1"></i> MySQL 8.x Stored Programs</span>
+  </div>
+</div>
+
+<!-- Section 1: Predefined Academic SQL Queries Suite -->
+<div class="saas-card mb-5">
+  <div class="saas-card-header bg-light">
+    <div class="saas-card-title">
+      <i class="fas fa-search-plus text-primary"></i> 1. Academic SQL Query Demonstration (25+ Relational Concepts)
+    </div>
+    <span class="badge bg-info text-dark">Predefined Safe Execution</span>
+  </div>
+  <div class="saas-card-body">
+    <p class="text-muted small mb-3">
+      Select an academic query to display its SQL source code, target concept (Joins, Subqueries, HAVING, Aggregations), and execute it live against the database:
+    </p>
+
+    <div class="row g-2 mb-4">
+      {% for qkey, qdata in queries.items() %}
+      <div class="col-md-6 col-lg-3">
+        <button class="btn btn-outline-primary w-100 text-start p-3 h-100 d-flex flex-column justify-content-between" onclick="runPredefinedQuery('{{ qkey }}')">
+          <div>
+            <div class="fw-bold text-dark mb-1" style="font-size: 13.5px;">{{ qdata.name }}</div>
+            <span class="badge bg-light text-primary border small">{{ qdata.category }}</span>
+          </div>
+          <div class="mt-2 text-primary small fw-semibold">
+            <i class="fas fa-play me-1"></i> Execute Query
+          </div>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Query Result Display Card -->
+    <div id="queryResultCard" style="display: none;" class="card border-0 bg-light p-4 rounded shadow-sm">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="badge bg-primary" id="queryCategoryBadge">Category</span>
+        <span class="text-muted small" id="queryDescriptionText">Query Description</span>
+      </div>
+
+      <div class="sql-display-box" id="querySqlDisplay">
+        -- SQL query code appears here
+      </div>
+
+      <div id="queryResultContainer" class="mt-3">
+        <!-- Live Table injected dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 2: Stored Procedures Invocation -->
+<div class="saas-card mb-5">
+  <div class="saas-card-header bg-light">
+    <div class="saas-card-title">
+      <i class="fas fa-cogs text-teal"></i> 2. Stored Procedures Live Invocation
+    </div>
+    <span class="badge bg-secondary">MySQL <code>CALL proc_name()</code></span>
+  </div>
+  <div class="saas-card-body">
+    <div class="row g-4">
+      <!-- Procedure A: restock_medicine -->
+      <div class="col-md-6">
+        <div class="card h-100 border p-3">
+          <h6 class="fw-bold text-primary mb-2"><i class="fas fa-plus-circle me-1"></i> Procedure: <code>restock_medicine()</code></h6>
+          <p class="text-muted small mb-3">Increments branch inventory units and inserts an audit log into <code>STOCK_LOG</code>.</p>
+          <form onsubmit="submitProcedureCall(event, 'restock_medicine')">
+            <div class="mb-2">
+              <label class="form-label small fw-bold">Pharmacy</label>
+              <select name="pharmacy_id" class="form-select form-select-sm" required>
+                {% for p in pharmacies %}
+                <option value="{{ p.Pharmacy_ID }}">{{ p.Name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">Medicine</label>
+              <select name="medicine_id" class="form-select form-select-sm" required>
+                {% for m in medicines %}
+                <option value="{{ m.Medicine_ID }}">{{ m.Name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label small fw-bold">Quantity</label>
+                <input type="number" name="quantity" class="form-control form-control-sm" value="30" min="1" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-bold">Ref ID</label>
+                <input type="text" name="reference_id" class="form-control form-control-sm" value="PROC-VIVA-DEMO">
+              </div>
+            </div>
+            <button type="submit" class="btn-saas btn-saas-teal btn-saas-sm w-100 justify-content-center">
+              <i class="fas fa-play"></i> CALL restock_medicine()
+            </button>
+            <div class="proc-feedback" style="display:none;"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Procedure B: generate_bill -->
+      <div class="col-md-6">
+        <div class="card h-100 border p-3">
+          <h6 class="fw-bold text-success mb-2"><i class="fas fa-file-invoice-dollar me-1"></i> Procedure: <code>generate_bill()</code></h6>
+          <p class="text-muted small mb-3">Computes prescription cost from formulary, validates patient match, and logs dispensation.</p>
+          <form onsubmit="submitProcedureCall(event, 'generate_bill')">
+            <div class="mb-2">
+              <label class="form-label small fw-bold">Bill ID</label>
+              <input type="number" name="bill_id" class="form-control form-control-sm" value="1150" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">Pharmacy</label>
+              <select name="pharmacy_id" class="form-select form-select-sm" required>
+                {% for p in pharmacies %}
+                <option value="{{ p.Pharmacy_ID }}">{{ p.Name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label small fw-bold">Patient</label>
+                <select name="patient_id" class="form-select form-select-sm" required>
+                  {% for pat in patients %}
+                  <option value="{{ pat.Patient_ID }}">{{ pat.First_Name }} {{ pat.Last_Name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-bold">Prescription</label>
+                <select name="prescription_id" class="form-select form-select-sm" required>
+                  {% for pr in prescriptions %}
+                  <option value="{{ pr.Prescription_ID }}">#{{ pr.Prescription_ID }} (Pat: {{ pr.Patient_ID }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="btn-saas btn-saas-primary btn-saas-sm w-100 justify-content-center">
+              <i class="fas fa-play"></i> CALL generate_bill()
+            </button>
+            <div class="proc-feedback" style="display:none;"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 3: Deterministic Stored Functions -->
+<div class="saas-card mb-5">
+  <div class="saas-card-header bg-light">
+    <div class="saas-card-title">
+      <i class="fas fa-square-root-alt text-indigo"></i> 3. Database Stored Functions Evaluation
+    </div>
+    <span class="badge bg-dark">Deterministic Scalar Logic</span>
+  </div>
+  <div class="saas-card-body">
+    <div class="row g-4">
+      <!-- Function 1: get_medicine_price -->
+      <div class="col-md-4">
+        <div class="p-3 bg-light rounded h-100">
+          <label class="form-label small fw-bold">1. <code>get_medicine_price(med_id)</code></label>
+          <select id="funcMedPriceSelect" class="form-select form-select-sm mb-2">
+            {% for m in medicines %}
+            <option value="{{ m.Medicine_ID }}">{{ m.Name }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-sm btn-primary w-100" onclick="runFunctionDemo('get_medicine_price', 'funcMedPriceSelect')">
+            Evaluate Function
+          </button>
+        </div>
+      </div>
+
+      <!-- Function 2: get_patient_prescription_count -->
+      <div class="col-md-4">
+        <div class="p-3 bg-light rounded h-100">
+          <label class="form-label small fw-bold">2. <code>get_patient_prescription_count(pat_id)</code></label>
+          <select id="funcPatPrescSelect" class="form-select form-select-sm mb-2">
+            {% for pat in patients %}
+            <option value="{{ pat.Patient_ID }}">{{ pat.First_Name }} {{ pat.Last_Name }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-sm btn-primary w-100" onclick="runFunctionDemo('get_patient_prescription_count', 'funcPatPrescSelect')">
+            Evaluate Function
+          </button>
+        </div>
+      </div>
+
+      <!-- Function 3: get_pharmacy_revenue -->
+      <div class="col-md-4">
+        <div class="p-3 bg-light rounded h-100">
+          <label class="form-label small fw-bold">3. <code>get_pharmacy_revenue(pharm_id)</code></label>
+          <select id="funcPharmRevSelect" class="form-select form-select-sm mb-2">
+            {% for p in pharmacies %}
+            <option value="{{ p.Pharmacy_ID }}">{{ p.Name }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-sm btn-primary w-100" onclick="runFunctionDemo('get_pharmacy_revenue', 'funcPharmRevSelect')">
+            Evaluate Function
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Output Box for Functions -->
+    <div id="funcOutput" class="mt-3"></div>
+  </div>
+</div>
+
+<!-- Section 4: Live Trigger Verification Demonstration -->
+<div class="saas-card">
+  <div class="saas-card-header bg-light">
+    <div class="saas-card-title">
+      <i class="fas fa-bolt text-warning"></i> 4. Live Trigger Execution & Verification Demonstration
+    </div>
+    <span class="badge bg-warning text-dark">Automated Audit & Safety</span>
+  </div>
+  <div class="saas-card-body">
+    <p class="text-muted small mb-3">
+      This test demonstrates the automated trigger <code>trg_after_inventory_update</code> and constraint validation. 
+      It queries initial stock, applies a restock mutation, inspects updated stock, and displays the automatically generated audit row in <code>STOCK_LOG</code>:
+    </p>
+
+    <div class="row g-3 align-items-end mb-4 bg-light p-3 rounded">
+      <div class="col-md-4">
+        <label class="form-label small fw-bold">Pharmacy Branch</label>
+        <select id="triggerPharmSelect" class="form-select form-select-sm">
+          {% for p in pharmacies %}
+          <option value="{{ p.Pharmacy_ID }}">{{ p.Name }} ({{ p.City }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-bold">Medicine Formulation</label>
+        <select id="triggerMedSelect" class="form-select form-select-sm">
+          {% for m in medicines %}
+          <option value="{{ m.Medicine_ID }}">{{ m.Name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Delta (+Units)</label>
+        <input type="number" id="triggerDeltaInput" class="form-control form-control-sm" value="25">
+      </div>
+      <div class="col-md-2">
+        <button class="btn-saas btn-saas-teal btn-saas-sm w-100 justify-content-center" onclick="runTriggerLiveDemo()">
+          <i class="fas fa-play-circle"></i> Run Trigger Test
+        </button>
+      </div>
+    </div>
+
+    <div id="triggerDemoDisplay">
+      <div class="text-center py-4 text-muted border border-dashed rounded">
+        <i class="fas fa-bolt fa-2x mb-2 text-warning opacity-50 d-block"></i>
+        Click 'Run Trigger Test' to execute the live before/after trigger demonstration workflow.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/db_ops.js') }}"></script>
+{% endblock %}

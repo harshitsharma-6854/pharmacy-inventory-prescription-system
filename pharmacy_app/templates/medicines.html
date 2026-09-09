@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block title %}Medicine Inventory & Formulary{% endblock %}
+{% block breadcrumb %}Medicines{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Pharmaceutical Formulary & Inventory</h2>
+    <p class="text-muted small mb-0">Track active medicines, unit pricing, batch expiration, and branch stock on hand.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn-saas btn-saas-teal" data-bs-toggle="modal" data-bs-target="#restockModal">
+      <i class="fas fa-boxes"></i> Quick Restock
+    </button>
+    <button class="btn-saas btn-saas-primary" data-bs-toggle="modal" data-bs-target="#addMedicineModal">
+      <i class="fas fa-plus"></i> Add New Medicine
+    </button>
+  </div>
+</div>
+
+<!-- Search & Status Filters -->
+<div class="saas-card mb-4">
+  <div class="saas-card-body py-3">
+    <form method="GET" action="{{ url_for('medicines_view') }}" class="row g-2 align-items-center">
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+          <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search medicine name..." value="{{ request.args.get('search', '') }}">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <select name="status" class="form-select">
+          <option value="">All Inventory Statuses</option>
+          <option value="IN_STOCK" {% if request.args.get('status') == 'IN_STOCK' %}selected{% endif %}>IN STOCK</option>
+          <option value="LOW_STOCK" {% if request.args.get('status') == 'LOW_STOCK' %}selected{% endif %}>LOW STOCK</option>
+          <option value="OUT_OF_STOCK" {% if request.args.get('status') == 'OUT_OF_STOCK' %}selected{% endif %}>OUT OF STOCK</option>
+          <option value="EXPIRED" {% if request.args.get('status') == 'EXPIRED' %}selected{% endif %}>EXPIRED</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="pharmacy_id" class="form-select">
+          <option value="">All Branches</option>
+          {% for p in pharmacies %}
+          <option value="{{ p.Pharmacy_ID }}" {% if request.args.get('pharmacy_id')|string == p.Pharmacy_ID|string %}selected{% endif %}>{{ p.Name.split()[0] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn-saas btn-saas-teal w-100 justify-content-center">Filter</button>
+        <a href="{{ url_for('medicines_view') }}" class="btn-saas btn-saas-outline"><i class="fas fa-redo"></i></a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Medicines Table -->
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-card-title">
+      <i class="fas fa-pills text-teal"></i> Medicine Catalog ({{ medicines | length }})
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Formulation Name</th>
+          <th>Unit Price</th>
+          <th>Manufacturing Date</th>
+          <th>Expiry Date</th>
+          <th>Total Stock</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in medicines %}
+        <tr>
+          <td><span class="badge bg-light text-dark fw-bold">#{{ m.Medicine_ID }}</span></td>
+          <td class="fw-semibold text-primary">
+            {{ m.Name }}
+            <div class="text-muted small">Prescribed {{ m.Prescribed_Count }} times</div>
+          </td>
+          <td class="fw-bold text-dark">
+            {{ m.Price | currency }}
+          </td>
+          <td><span class="text-muted">{{ m.Manu_Date }}</span></td>
+          <td>
+            <span class="{% if m.status == 'EXPIRED' %}text-danger fw-bold{% else %}text-muted{% endif %}">
+              {{ m.Exp_Date }}
+            </span>
+          </td>
+          <td>
+            <div class="fw-bold fs-6">{{ m.Total_Stock }} <small class="text-muted fw-normal">units</small></div>
+          </td>
+          <td>
+            <span class="badge-status {{ m.badge_class }}">
+              {% if m.status == 'IN STOCK' %}<i class="fas fa-check-circle"></i>
+              {% elif m.status == 'LOW STOCK' %}<i class="fas fa-exclamation-triangle"></i>
+              {% elif m.status == 'OUT OF STOCK' %}<i class="fas fa-times-circle"></i>
+              {% else %}<i class="fas fa-ban"></i>{% endif %}
+              {{ m.status }}
+            </span>
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-teal me-1" onclick="openQuickRestock({{ m.Medicine_ID }}, '{{ m.Name }}')" title="Restock">
+              <i class="fas fa-plus-circle"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="viewMedicineModal({{ m.Medicine_ID }})" title="View Details">
+              <i class="fas fa-info-circle"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-5 text-muted">
+            <i class="fas fa-box-open fa-2x mb-3 text-secondary opacity-50 d-block"></i>
+            No medicines found matching the active filters.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Add New Medicine (Procedure add_medicine) -->
+<div class="modal fade" id="addMedicineModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="fas fa-pills me-2"></i>Catalog New Medicine</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="addMedicineForm" onsubmit="submitAddMedicine(event)">
+        <div class="modal-body p-4">
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fas fa-database me-1"></i> Invokes MySQL Stored Procedure <code>add_medicine()</code> with constraint validation (Price > 0, Exp > Manu).
+          </div>
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Medicine ID (Optional)</label>
+              <input type="number" name="medicine_id" class="form-control form-control-saas" placeholder="e.g. 520">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Medicine / Brand Name *</label>
+              <input type="text" name="name" class="form-control form-control-saas" placeholder="e.g. Lipitor 10mg (Atorvastatin)" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Unit Price (INR) *</label>
+              <input type="number" step="0.01" name="price" class="form-control form-control-saas" placeholder="125.00" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Manufacturing Date *</label>
+              <input type="date" name="manu_date" class="form-control form-control-saas" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Expiration Date *</label>
+              <input type="date" name="exp_date" class="form-control form-control-saas" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Initial Dispensing Pharmacy</label>
+              <select name="pharmacy_id" class="form-select form-control-saas">
+                {% for p in pharmacies %}
+                <option value="{{ p.Pharmacy_ID }}">{{ p.Name }} ({{ p.City }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Initial Stock Units</label>
+              <input type="number" name="initial_stock" class="form-control form-control-saas" value="50">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold">Reorder Level</label>
+              <input type="number" name="reorder_level" class="form-control form-control-saas" value="15">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn-saas btn-saas-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-saas btn-saas-teal"><i class="fas fa-save me-1"></i> Save Medicine</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Quick Restock (Procedure restock_medicine) -->
+<div class="modal fade" id="restockModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-teal text-white" style="background: var(--secondary);">
+        <h5 class="modal-title fw-bold text-white"><i class="fas fa-boxes me-2"></i>Restock Medicine Inventory</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="restockForm" onsubmit="submitRestockForm(event)">
+        <div class="modal-body p-4">
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fas fa-bolt text-warning me-1"></i> Executes <code>restock_medicine()</code>; triggers <code>trg_after_inventory_update</code> to log in <code>STOCK_LOG</code>.
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Select Medicine</label>
+            <select name="medicine_id" id="restockMedicineSelect" class="form-select form-control-saas" required>
+              {% for m in medicines %}
+              <option value="{{ m.Medicine_ID }}">{{ m.Name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Target Pharmacy Branch</label>
+            <select name="pharmacy_id" class="form-select form-control-saas" required>
+              {% for p in pharmacies %}
+              <option value="{{ p.Pharmacy_ID }}">{{ p.Name }} ({{ p.City }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Restock Quantity (+Units)</label>
+              <input type="number" name="quantity" class="form-control form-control-saas" value="50" min="1" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Batch / Ref ID</label>
+              <input type="text" name="reference_id" class="form-control form-control-saas" value="ORD-QUICK-RESTOCK">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn-saas btn-saas-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-saas btn-saas-teal"><i class="fas fa-plus me-1"></i> Apply Restock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Medicine Details & Stock Logs -->
+<div class="modal fade" id="medicineDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold" id="detailMedicineName">Medicine Overview</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4" id="medicineDetailContent">
+        <div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn-saas btn-saas-outline" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openQuickRestock(medicineId, medicineName) {
+  const select = document.getElementById('restockMedicineSelect');
+  if (select) select.value = medicineId;
+  const modal = new bootstrap.Modal(document.getElementById('restockModal'));
+  modal.show();
+}
+
+async function submitAddMedicine(event) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch('/api/medicines', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      showToast(`✓ ${json.message || 'Medicine added successfully!'}`, 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showToast(json.message || 'Error adding medicine.', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to invoke add_medicine stored procedure.', 'error');
+  }
+}
+
+async function submitRestockForm(event) {
+  event.preventDefault();
+  const form = event.target;
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch('/api/medicines/restock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      showToast(`✓ ${json.message || 'Restock operation completed!'}`, 'success');
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showToast(json.message || 'Restock failed.', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to invoke restock stored procedure.', 'error');
+  }
+}
+
+async function viewMedicineModal(medicineId) {
+  const modalEl = document.getElementById('medicineDetailModal');
+  const modal = new bootstrap.Modal(modalEl);
+  const content = document.getElementById('medicineDetailContent');
+  modal.show();
+
+  try {
+    const res = await fetch(`/api/medicines/${medicineId}`);
+    const json = await res.json();
+    if (!json.success) {
+      content.innerHTML = `<div class="alert alert-danger">${json.message}</div>`;
+      return;
+    }
+    const m = json.data;
+    document.getElementById('detailMedicineName').textContent = `${m.Name} (ID: #${m.Medicine_ID})`;
+
+    content.innerHTML = `
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded">
+            <span class="text-muted small">Retail Unit Price:</span>
+            <div class="fw-bold fs-5 text-primary">${formatINR(m.Price)}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded">
+            <span class="text-muted small">Manufacturing / Expiry:</span>
+            <div class="fw-bold">${m.Manu_Date} &rarr; ${m.Exp_Date}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 bg-light rounded">
+            <span class="text-muted small">Prescription Usage:</span>
+            <div class="fw-bold text-teal">${m.prescribed_count} Prescriptions</div>
+          </div>
+        </div>
+      </div>
+
+      <h6 class="fw-bold text-primary border-bottom pb-2 mb-3"><i class="fas fa-boxes me-2"></i>Branch-wise Inventory Stock</h6>
+      <div class="table-responsive mb-4">
+        <table class="table table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Pharmacy Branch</th>
+              <th>City</th>
+              <th>Current Stock</th>
+              <th>Reorder Level</th>
+              <th>Last Synced</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${m.inventory.map(inv => `
+              <tr>
+                <td class="fw-semibold">${inv.Pharmacy_Name}</td>
+                <td>${inv.Pharmacy_City}</td>
+                <td>
+                  <span class="badge ${inv.Quantity <= inv.Reorder_Level ? 'bg-warning text-dark' : 'bg-success'}">
+                    ${inv.Quantity} units
+                  </span>
+                </td>
+                <td>${inv.Reorder_Level}</td>
+                <td class="small text-muted">${inv.Last_Updated || 'N/A'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <h6 class="fw-bold text-secondary border-bottom pb-2 mb-3"><i class="fas fa-history me-2"></i>Recent Stock Mutation Audit Log</h6>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Log ID</th>
+              <th>Branch</th>
+              <th>Movement</th>
+              <th>Type</th>
+              <th>Timestamp</th>
+              <th>Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${m.logs.length > 0 ? m.logs.map(log => `
+              <tr>
+                <td>#${log.Log_ID}</td>
+                <td>${log.Pharmacy_Name}</td>
+                <td class="fw-bold ${log.Quantity_Change > 0 ? 'text-success' : 'text-danger'}">
+                  ${log.Quantity_Change > 0 ? '+' : ''}${log.Quantity_Change}
+                </td>
+                <td><span class="badge bg-light text-dark">${log.Change_Type}</span></td>
+                <td class="small text-muted">${log.Change_Date}</td>
+                <td><code>${log.Reference_ID || '-'}</code></td>
+              </tr>
+            `).join('') : '<tr><td colspan="6" class="text-center text-muted">No mutation logs on record.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    content.innerHTML = `<div class="alert alert-danger">Error retrieving medicine details.</div>`;
+  }
+}
+</script>
+{% endblock %}

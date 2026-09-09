@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Billing & Invoices{% endblock %}
+{% block breadcrumb %}Bills & Invoices{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Invoices & Financial Billing</h2>
+    <p class="text-muted small mb-0">Dispensary billing records automatically calculated from clinical prescriptions and medicine prices.</p>
+  </div>
+  <button class="btn-saas btn-saas-primary" data-bs-toggle="modal" data-bs-target="#generateBillModal">
+    <i class="fas fa-file-invoice-dollar"></i> Generate New Bill
+  </button>
+</div>
+
+<!-- Bills Table -->
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-card-title">
+      <i class="fas fa-receipt text-teal"></i> Invoiced Receipts ({{ bills | length }})
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Pharmacy Branch</th>
+          <th>Patient Name</th>
+          <th>Location</th>
+          <th>Total Invoiced</th>
+          <th>Payment Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bills %}
+        <tr>
+          <td><span class="badge bg-light text-dark fw-bold fs-6">#INV-{{ b.Bill_ID }}</span></td>
+          <td class="fw-semibold text-primary">
+            {{ b.Pharmacy_Name }}
+            <div class="text-muted small">{{ b.Pharmacy_City }}</div>
+          </td>
+          <td class="fw-medium text-dark">
+            {{ b.Patient_First }} {{ b.Patient_Last }}
+            <div class="text-muted small">ID: #{{ b.Patient_ID }}</div>
+          </td>
+          <td>{{ b.Patient_City }}</td>
+          <td>
+            <div class="fw-bold fs-6 text-success">{{ b.Amount | currency }}</div>
+          </td>
+          <td>
+            <span class="badge-status success">
+              <i class="fas fa-check-circle"></i> SETTLED
+            </span>
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary" onclick="viewBillModal({{ b.Bill_ID }})" title="View Invoice">
+              <i class="fas fa-print me-1"></i> View / Print
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Generate Bill (Procedure generate_bill) -->
+<div class="modal fade" id="generateBillModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="fas fa-calculator me-2"></i>Generate Dispensation Bill</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="generateBillForm" onsubmit="submitGenerateBill(event)">
+        <div class="modal-body p-4">
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fas fa-database me-1"></i> Invokes MySQL Stored Procedure <code>generate_bill()</code>. Total amount is computed directly from prescribed medicines, and stock is decremented.
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Select Clinical Prescription *</label>
+            <select name="prescription_id" id="billPrescSelect" class="form-select form-control-saas" required onchange="handlePrescriptionSelectChange(this)">
+              <option value="">-- Choose Prescription --</option>
+              {% for pr in prescriptions %}
+              <option value="{{ pr.Prescription_ID }}" data-patient-id="{{ pr.Patient_ID }}">
+                #{{ pr.Prescription_ID }} - {{ pr.First_Name }} {{ pr.Last_Name }} ({{ pr.Date }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <input type="hidden" name="patient_id" id="billPatientIdHidden">
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Dispensing Pharmacy Branch *</label>
+            <select name="pharmacy_id" class="form-select form-control-saas" required>
+              {% for p in pharmacies %}
+              <option value="{{ p.Pharmacy_ID }}">{{ p.Name }} ({{ p.City }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Bill ID (Optional)</label>
+            <input type="number" name="bill_id" class="form-control form-control-saas" placeholder="Auto-generated if blank">
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn-saas btn-saas-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-saas btn-saas-teal"><i class="fas fa-check-circle me-1"></i> Compute & Issue Bill</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Printable Invoice Viewer -->
+<div class="modal fade" id="viewBillModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-dark text-white no-print">
+        <h5 class="modal-title fw-bold">Dispensary Invoice Viewer</h5>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-light" onclick="printCurrentInvoice()"><i class="fas fa-print me-1"></i> Print Invoice</button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+      <div class="modal-body p-4 p-md-5">
+        <!-- Invoice Document Canvas -->
+        <div class="invoice-sheet">
+          <div class="invoice-header">
+            <div>
+              <h3 class="fw-bold text-primary mb-1" id="modalBillPharm">Apollo HealthCity Pharmacy</h3>
+              <div class="text-muted small">Licensed Dispensing Health Facility</div>
+              <div class="text-muted small">GSTIN: 27AAACH1234F1Z5</div>
+            </div>
+            <div class="invoice-meta">
+              <span class="badge bg-success-subtle text-success fs-6 fw-bold">OFFICIAL RECEIPT</span>
+              <div class="fw-bold text-dark mt-2">Invoice #<span id="modalBillId">1101</span></div>
+              <div class="text-muted small">Date: 2026-09-04</div>
+            </div>
+          </div>
+
+          <div class="invoice-parties">
+            <div class="invoice-party-box">
+              <h5>Billed To Patient:</h5>
+              <div class="fw-bold text-dark" id="modalBillPatient">Rahul Sharma</div>
+              <div class="text-muted small" id="modalBillPatientAddr">Worli Seaface, Mumbai</div>
+            </div>
+            <div class="invoice-party-box">
+              <h5>Clinical Authorization:</h5>
+              <div class="fw-bold text-primary" id="modalBillDoctor">Dr. Rajesh Kulkarni</div>
+              <div class="text-muted small">Prescription: <span id="modalBillPresc">#1001</span></div>
+            </div>
+          </div>
+
+          <table class="table table-bordered mb-4">
+            <thead class="table-light">
+              <tr>
+                <th>Medicine Formulation</th>
+                <th>Dosage & Instructions</th>
+                <th class="text-end">Price</th>
+                <th class="text-end">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="modalBillItemsBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="3" class="text-end">Subtotal:</th>
+                <td class="text-end fw-bold" id="modalBillSubtotal">₹0.00</td>
+              </tr>
+              <tr>
+                <th colspan="3" class="text-end">Applicable GST (5%):</th>
+                <td class="text-end" id="modalBillTax">₹0.00</td>
+              </tr>
+              <tr class="table-light">
+                <th colspan="3" class="text-end fs-5 text-primary">GRAND TOTAL:</th>
+                <td class="text-end fs-5 fw-bold text-success" id="modalBillTotal">₹0.00</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="border-top pt-3 text-center text-muted small">
+            Thank you for choosing PHARMA Care & Inventory. This invoice is verified and generated directly by relational database stored procedures.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/billing.js') }}"></script>
+<script>
+function handlePrescriptionSelectChange(select) {
+  const selectedOpt = select.options[select.selectedIndex];
+  const patientId = selectedOpt ? selectedOpt.dataset.patientId : '';
+  document.getElementById('billPatientIdHidden').value = patientId || '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const prescId = urlParams.get('presc_id');
+  const patId = urlParams.get('pat_id');
+  if (prescId) {
+    const modal = new bootstrap.Modal(document.getElementById('generateBillModal'));
+    const prescSelect = document.getElementById('billPrescSelect');
+    if (prescSelect) {
+      prescSelect.value = prescId;
+      document.getElementById('billPatientIdHidden').value = patId || '';
+    }
+    modal.show();
+  }
+});
+</script>
+{% endblock %}

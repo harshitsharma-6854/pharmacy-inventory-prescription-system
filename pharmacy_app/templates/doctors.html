@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Roster{% endblock %}
+{% block breadcrumb %}Doctors{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Medical Specialist Roster</h2>
+    <p class="text-muted small mb-0">Authorized doctors affiliated with partner hospital facilities issuing clinical prescriptions.</p>
+  </div>
+</div>
+
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-card-title">
+      <i class="fas fa-user-md text-teal"></i> Registered Doctors ({{ doctors | length }})
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Doctor ID</th>
+          <th>Specialist Name</th>
+          <th>Qualification & Degrees</th>
+          <th>Experience</th>
+          <th>Hospital Center</th>
+          <th>Phone</th>
+          <th>Prescriptions Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in doctors %}
+        <tr>
+          <td><span class="badge bg-light text-dark fw-bold">#{{ d.Doctor_ID }}</span></td>
+          <td class="fw-semibold text-primary">
+            Dr. {{ d.First_Name }} {{ d.Last_Name }}
+          </td>
+          <td>
+            <span class="badge bg-info-subtle text-info fw-semibold">{{ d.Qualification }}</span>
+          </td>
+          <td>
+            <div class="fw-bold text-dark">{{ d.Experience }} yrs</div>
+          </td>
+          <td>
+            <div class="fw-medium">{{ d.Hospital_Name }}</div>
+            <div class="text-muted small">{{ d.Hospital_City }}</div>
+          </td>
+          <td class="small">{{ d.Contact_No }}</td>
+          <td>
+            <span class="badge-status info">
+              <i class="fas fa-file-signature"></i> {{ d.Prescriptions_Count }} Prescriptions
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

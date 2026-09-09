@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings & Health{% endblock %}
+{% block breadcrumb %}Settings & Database Health{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">System Topology & Database Health</h2>
+    <p class="text-muted small mb-0">Connection metadata, entity table record counts, and architectural configuration.</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Left Column: Database Status -->
+  <div class="col-lg-6">
+    <div class="saas-card h-100">
+      <div class="saas-card-header bg-light">
+        <div class="saas-card-title">
+          <i class="fas fa-server text-teal"></i> Active Database Engine
+        </div>
+        <span class="badge {% if status.is_mysql %}bg-success{% else %}bg-warning text-dark{% endif %}">
+          {{ 'Operational' if status.active else 'Inactive' }}
+        </span>
+      </div>
+      <div class="saas-card-body">
+        <div class="mb-3">
+          <span class="text-muted small">Database Engine:</span>
+          <div class="fw-bold fs-5 text-primary">{{ status.engine }}</div>
+        </div>
+        <div class="mb-3">
+          <span class="text-muted small">Database Name / Catalog:</span>
+          <div class="fw-bold text-dark">{{ status.database }}</div>
+        </div>
+        <div class="mb-4">
+          <span class="text-muted small">Host / Endpoint:</span>
+          <div class="fw-bold text-dark">{{ status.host }}</div>
+        </div>
+
+        <div class="alert alert-info py-2 small mb-0">
+          <i class="fas fa-info-circle me-1"></i>
+          The application uses standard MySQL 8.x with stored programs. When MySQL server is online on localhost:3306, it communicates via <code>mysql-connector-python</code>. A built-in zero-config fallback guarantees seamless viva demonstrations on any machine.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Relational Tables Audit -->
+  <div class="col-lg-6">
+    <div class="saas-card h-100">
+      <div class="saas-card-header bg-light">
+        <div class="saas-card-title">
+          <i class="fas fa-table text-primary"></i> Relational Entities Record Count
+        </div>
+        <span class="badge bg-light text-dark border">DA1 Entities + Support</span>
+      </div>
+      <div class="saas-card-body p-0">
+        <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+          <table class="saas-table">
+            <thead>
+              <tr>
+                <th>Entity / Table Name</th>
+                <th class="text-end">Records</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tbl, cnt in table_counts.items() %}
+              <tr>
+                <td class="fw-medium font-monospace">{{ tbl }}</td>
+                <td class="text-end fw-bold text-primary">{{ cnt }} rows</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

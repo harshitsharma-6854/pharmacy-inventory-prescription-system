@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Analytical Reports{% endblock %}
+{% block breadcrumb %}Reports & Analytics{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Analytical Intelligence & Audit Reports</h2>
+    <p class="text-muted small mb-0">Multi-dimensional operational queries, clinical trends, and financial summaries.</p>
+  </div>
+  <button class="btn-saas btn-saas-outline" onclick="window.print()">
+    <i class="fas fa-print me-1"></i> Print / Export Report
+  </button>
+</div>
+
+<!-- Report Navigation Tabs -->
+<ul class="nav nav-pills mb-4 bg-white p-2 rounded border shadow-sm flex-wrap gap-1">
+  <li class="nav-item">
+    <a class="nav-link {% if report_type == 'inventory' %}active bg-primary{% endif %}" href="{{ url_for('reports_view', type='inventory') }}">
+      <i class="fas fa-boxes me-1"></i> Inventory Valuation
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if report_type == 'low_stock' %}active bg-danger{% endif %}" href="{{ url_for('reports_view', type='low_stock') }}">
+      <i class="fas fa-exclamation-triangle me-1"></i> Low Stock Alert
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if report_type == 'expired' %}active bg-dark{% endif %}" href="{{ url_for('reports_view', type='expired') }}">
+      <i class="fas fa-calendar-times me-1"></i> Expired Batches
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if report_type == 'revenue' %}active bg-success{% endif %}" href="{{ url_for('reports_view', type='revenue') }}">
+      <i class="fas fa-file-invoice-dollar me-1"></i> Revenue Audit
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if report_type == 'doctor_perf' %}active bg-info{% endif %}" href="{{ url_for('reports_view', type='doctor_perf') }}">
+      <i class="fas fa-user-md me-1"></i> Doctor Performance
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if report_type == 'supplier_perf' %}active bg-warning text-dark{% endif %}" href="{{ url_for('reports_view', type='supplier_perf') }}">
+      <i class="fas fa-truck me-1"></i> Supplier Performance
+    </a>
+  </li>
+</ul>
+
+<!-- Report Content Table Card -->
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-card-title">
+      <i class="fas fa-table text-teal"></i> Report Dataset ({{ report_data | length }} entries)
+    </div>
+    <span class="badge bg-light text-dark">Generated: 2026-09-04</span>
+  </div>
+  <div class="table-responsive">
+    {% if report_type == 'inventory' %}
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Medicine</th>
+          <th>Branch</th>
+          <th>Stock Units</th>
+          <th>Unit Price</th>
+          <th>Total Valuation</th>
+          <th>Expiry Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in report_data %}
+        <tr>
+          <td class="fw-bold text-primary">{{ r.Medicine_Name }}</td>
+          <td>{{ r.Pharmacy_Name }}</td>
+          <td><span class="badge bg-light text-dark fs-6">{{ r.Quantity }}</span></td>
+          <td>{{ r.Price | currency }}</td>
+          <td class="fw-bold text-success">{{ r.Total_Stock_Valuation | currency }}</td>
+          <td>{{ r.Exp_Date }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% elif report_type == 'low_stock' %}
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Medicine</th>
+          <th>Branch</th>
+          <th>Current Stock</th>
+          <th>Threshold</th>
+          <th>Units Deficit</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in report_data %}
+        <tr>
+          <td class="fw-bold text-primary">{{ r.Medicine_Name }}</td>
+          <td>{{ r.Pharmacy_Name }}</td>
+          <td><span class="badge bg-danger fs-6">{{ r.Quantity }}</span></td>
+          <td>{{ r.Reorder_Level }}</td>
+          <td class="fw-bold text-danger">{{ r.Units_Deficit }} Units Deficit</td>
+          <td>
+            <a href="{{ url_for('stock_view') }}" class="btn btn-sm btn-outline-teal">Restock</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% elif report_type == 'expired' %}
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Medicine</th>
+          <th>Expiration Date</th>
+          <th>Branch</th>
+          <th>Expired Units Held</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in report_data %}
+        <tr>
+          <td class="fw-bold text-danger">{{ r.Medicine_Name }}</td>
+          <td class="fw-bold">{{ r.Exp_Date }}</td>
+          <td>{{ r.Pharmacy_Name or 'Network Catalog' }}</td>
+          <td>{{ r.Quantity or 0 }} units</td>
+          <td><span class="badge bg-danger">QUARANTINE REQUIRED</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center py-4 text-muted">No expired batches on record.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% elif report_type == 'doctor_perf' %}
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Doctor</th>
+          <th>Specialization</th>
+          <th>Experience</th>
+          <th>Hospital Center</th>
+          <th>Prescriptions Issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in report_data %}
+        <tr>
+          <td class="fw-bold text-primary">{{ r.Doctor_Name }}</td>
+          <td><span class="badge bg-light text-dark">{{ r.Qualification }}</span></td>
+          <td>{{ r.Experience }} yrs</td>
+          <td>{{ r.Hospital_Name }}</td>
+          <td><span class="badge bg-primary fs-6">{{ r.Prescriptions_Issued }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% elif report_type == 'supplier_perf' %}
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Supplier Agency</th>
+          <th>Hub City</th>
+          <th>Total Orders</th>
+          <th>Completed Deliveries</th>
+          <th>Total Units Supplied</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in report_data %}
+        <tr>
+          <td class="fw-bold text-primary">{{ r.Supplier_Name }}</td>
+          <td>{{ r.City }}</td>
+          <td>{{ r.Orders_Handled }}</td>
+          <td><span class="badge bg-success">{{ r.Completed_Deliveries }}</span></td>
+          <td class="fw-bold fs-6 text-teal">{{ r.Units_Supplied }} Units</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% else %}
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Bill ID</th>
+          <th>Dispensing Branch</th>
+          <th>Patient</th>
+          <th>City</th>
+          <th>Invoiced Revenue</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in report_data %}
+        <tr>
+          <td>#{{ r.Bill_ID }}</td>
+          <td class="fw-semibold text-primary">{{ r.Pharmacy_Name }}</td>
+          <td>{{ r.Patient_Name }}</td>
+          <td>{{ r.Patient_City }}</td>
+          <td class="fw-bold text-success">{{ r.Amount | currency }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

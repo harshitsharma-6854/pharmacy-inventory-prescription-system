@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Partner Hospitals{% endblock %}
+{% block breadcrumb %}Hospitals{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold text-primary mb-1">Partner Medical Hospitals</h2>
+    <p class="text-muted small mb-0">Affiliated clinical care centers connected to regional pharmacy dispensaries.</p>
+  </div>
+</div>
+
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-card-title">
+      <i class="fas fa-hospital text-teal"></i> Hospital Facilities ({{ hospitals | length }})
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="saas-table">
+      <thead>
+        <tr>
+          <th>Hospital ID</th>
+          <th>Institution Name</th>
+          <th>Location</th>
+          <th>Emergency Contact</th>
+          <th>Primary Pharmacy Branch</th>
+          <th>Specialists On Staff</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in hospitals %}
+        <tr>
+          <td><span class="badge bg-light text-dark fw-bold">#{{ h.Hospital_ID }}</span></td>
+          <td class="fw-semibold text-primary fs-6">{{ h.Name }}</td>
+          <td>
+            <div class="fw-medium">{{ h.City }}, {{ h.State }}</div>
+            <div class="text-muted small">{{ h.Street }}</div>
+          </td>
+          <td class="fw-medium text-dark"><i class="fas fa-phone-alt text-muted me-1"></i>{{ h.Contact }}</td>
+          <td>
+            <span class="badge bg-light text-teal border">{{ h.Affiliated_Pharmacy }}</span>
+          </td>
+          <td>
+            <span class="badge-status info">
+              <i class="fas fa-user-md"></i> {{ h.Doctor_Count }} Doctors
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
