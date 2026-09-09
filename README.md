@@ -6,7 +6,7 @@
 
 ## 1. Project Overview
 
-The **Pharmacy Inventory and Prescription Tracking System** is a comprehensive, enterprise-grade database management solution designed for hospital-affiliated and retail pharmacy networks. It models the complete pharmaceutical lifecycle:
+The Pharmacy Inventory and Prescription Tracking System is a comprehensive database management solution designed to manage pharmacy inventory, prescriptions, billing, suppliers, and related operations. It models the complete pharmaceutical lifecycle:
 - Patient clinical registrations and multi-valued contact telephone points.
 - Qualified medical specialist affiliations with partner hospitals.
 - Issuance of formal clinical prescriptions and itemized medication regimens.
@@ -14,8 +14,7 @@ The **Pharmacy Inventory and Prescription Tracking System** is a comprehensive, 
 - Pharmaceutical supply chain distributions from manufacturers through wholesale GST dealers to retail pharmacies.
 - Automated financial invoice calculations, bill generation, and procurement purchase orders.
 
-The database architecture is built using **MySQL 8.x InnoDB** satisfying normalization up to **Boyce-Codd Normal Form (BCNF)**, and features complete PL/SQL-equivalent stored programs (Procedures, Deterministic Functions, and Triggers).
-
+The database architecture is built using MySQL 8.x InnoDB and is designed and analyzed for normalization up to Boyce-Codd Normal Form (BCNF), with MySQL stored procedures, deterministic functions, and triggers for database programming.
 ---
 
 ## 2. Technology Stack
@@ -34,10 +33,10 @@ The database architecture is built using **MySQL 8.x InnoDB** satisfying normali
 pharmacy_system/
 ├── database/
 │   ├── 01_schema.sql                        # DDL: Complete relational schema, constraints, indexes
-│   ├── 02_sample_data.sql                   # DML: Authentic Indian healthcare sample dataset
-│   ├── 03_queries.sql                       # 25+ academic SQL queries covering all relational concepts
+│   ├── 02_sample_data.sql                   # DML: Sample Indian healthcare dataset
+│   ├── 03_queries.sql                       # 25 academic SQL queries covering all relational concepts
 │   ├── 04_procedures_functions_triggers.sql # 6 Procedures, 5 Functions, 5 Triggers with SIGNAL exceptions
-│   └── 05_test_cases.sql                    # 15 verification test scripts (positive and boundary cases)
+│   └── 05_test_cases.sql                    # 15 documented verification test cases (positive and boundary cases)
 ├── pharmacy_app/
 │   ├── app.py                               # Flask web server, view controllers, and REST APIs
 │   ├── config.py                            # Environment settings and connection pool configuration
@@ -94,8 +93,8 @@ pharmacy_system/
 ### Step 1: Start MySQL Server
 Ensure the MySQL 8.x daemon is running:
 ```bash
-# On macOS (via Homebrew or System Preferences)
-brew services start mysql
+# On macOS (MySQL installer)
+sudo /usr/local/mysql/support-files/mysql.server start
 # Or on Linux / Windows
 sudo systemctl start mysql
 ```
@@ -116,7 +115,7 @@ mysql -u root -p < database/05_test_cases.sql
 
 ### Step 1: Create and Activate Virtual Environment
 ```bash
-cd /Users/harshitsharma/.gemini/antigravity/scratch/pharmacy_system
+# Run these commands from the project root
 python3 -m venv venv
 source venv/bin/activate
 ```
@@ -133,16 +132,16 @@ export MYSQL_HOST="localhost"
 export MYSQL_PORT=3306
 export MYSQL_USER="root"
 export MYSQL_PASSWORD="your_password"
-export MYSQL_DATABASE="pharmacy_system"
+export MYSQL_DATABASE="pharmacy_system_new"
 ```
-*(Note: If MySQL is offline on your machine during grading, the application automatically activates its zero-config Fallback Demo Database so the entire application and viva console remain 100% operational with zero setup friction!)*
+*(Note: If MySQL is unavailable, the application can use its zero-config fallback demo database so the main application and viva console can still be demonstrated.)*
 
 ### Step 4: Run the Flask Application
 ```bash
 cd pharmacy_app
-python app.py
+PORT=5050 python3 app.py
 ```
-Open your browser at: **`http://127.0.0.1:5000`**
+Open your browser at: **`http://127.0.0.1:5050`**
 
 ---
 
@@ -168,7 +167,7 @@ Open your browser at: **`http://127.0.0.1:5000`**
 2. `trg_before_inventory_update`: Signals `SQLSTATE '45000'` if quantity becomes negative (prevents negative stock).
 3. `trg_validate_bill_amount`: Enforces that invoiced amounts must be non-negative.
 4. `trg_before_order_insert`: Validates that arrival date succeeds order placement date.
-5. `trg_validate_medicine_insert`: Redundant safety guard enforcing positive price and forward expiry.
+5. `trg_validate_medicine_insert`: Safety guard enforcing positive price and forward expiry.
 
 ---
 
